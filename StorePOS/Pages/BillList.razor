@@ -1,0 +1,94 @@
+﻿@page "/billlist/{StoreId}"
+
+<h3>
+    Bill Register
+</h3>
+<NavBar StoreId="@StoreId"></NavBar>
+@if (Bills == null)
+{
+    <h5>Loading Bills</h5>
+}
+else
+{
+    <div class="row mt-1 border-bottom border-dark text-center align-content-center">
+        <div class="col-sm-2">
+            Bill Date
+        </div>
+        <div class="col-sm-3">
+            Bill Id
+        </div>
+        <div class="col-sm-1">
+            Estimate
+        </div>
+        <div class="col-sm-1">
+            Discount
+        </div>
+        <div class="col-sm-1">
+            Total
+        </div>
+        <div class="col-1">
+            Print
+        </div>
+        <div class="col-1">
+            Remove
+        </div>
+    </div>
+    @foreach (var item in Bills)
+    {
+
+        <div class="row mt-1 border-bottom border-dark text-center align-content-center align-middle" >
+            <div class="col-sm-2">
+                @item.CreatedAt
+            </div>
+            <div class="col-sm-3">
+                <p class="barcode">
+                    @item._id
+                </p>
+            </div>
+            <div class="col-sm-1">
+                @item.Estimate
+            </div>
+            <div class="col-sm-1">
+                @item.Discount
+            </div>
+            <div class="col-sm-1">
+                <b>
+                    @item.Total
+                </b>
+            </div>
+            <div class="col-1 text-primary">
+                <a class="btn btn-block" @onclick="@(e=>PrintBill(item._id))">
+                    <i class="fa fa-print">
+                    </i>
+                </a>
+            </div>
+            <div class="col-1 text-danger">
+                <a class="btn btn-block">
+                    <i class="fa fa-trash">
+                    </i>
+                </a>
+            </div>
+        </div>
+    }
+
+}
+
+@code {
+    [Parameter]
+    public String StoreId { get; set; }
+
+    List<Bill> Bills = new List<Bill>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GetBills();
+    }
+    protected async Task GetBills()
+    {
+        Bills = await StoreHandler.GetAllBills(StoreId);
+    }
+    protected async Task PrintBill(String BillId)
+    {
+        await iJSRuntime.InvokeAsync<object>("open", new object[] { $"/BillPrintPreview/{StoreId}/{BillId}", "_blank" });
+    }
+}

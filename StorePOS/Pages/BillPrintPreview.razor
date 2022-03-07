@@ -1,0 +1,107 @@
+﻿@page "/BillPrintPreview/{StoreId}/{NewBillId}"
+<div class="bg-white text-dark">
+
+
+    <div class="text-center">
+        <h4>Invoice</h4>
+    </div>
+    <hr />
+    @if (MyStore.Name == null)
+    {
+
+    }
+    else
+    {
+        <div class="row">
+            <div class="col-12 text-center">
+                <h4>
+                    @MyStore.Name
+                </h4>
+                <p class="barcode">
+                    *@NewBillId*
+                </p>
+                <p class="text-muted">
+                    @NewBill.CreatedAt
+                </p>
+                <hr />
+            </div>
+        </div>
+        int cnt = 1;
+        @foreach (var item in NewBill.BillingItems)
+        {
+            <div class="row">
+                <div class="col-sm-4">
+                    @cnt. @item.DisplayName
+                </div>
+                <div class="col-2">
+                    @item.Cost
+                </div>
+                <div class="col-2">
+                    @item.BillingQuantity
+                </div>
+                <div class="col-2">
+                    @item.BillingSubCost
+                </div>
+            </div>
+            cnt++;
+        }
+        <hr />
+        <div class="row">
+            <div class="col-10 text-right">
+                Sub Total
+            </div>
+            <div class="col-2">
+                @Estimate
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-10 text-right">
+                Total
+            </div>
+            <div class="col-2">
+                @(Estimate * Discount/100 + Estimate)
+            </div>
+        </div>
+    }
+</div>
+
+
+@code {
+    [Parameter]
+    public String StoreId { get; set; }
+    [Parameter]
+    public String NewBillId { get; set; }
+
+    double Estimate, Discount;
+
+    Store MyStore = new Store();
+    Bill NewBill = new Bill();
+    protected override async Task OnInitializedAsync()
+    {
+        await GetBill();
+        CalculateEstimate();
+    }
+
+    public async Task GetBill()
+    {
+        try
+        {
+            MyStore = await StoreHandler.GetStoreById(StoreId);
+            NewBill = MyStore.Bills.Find(el => el._id == NewBillId);
+        }
+        catch (Exception)
+        {
+
+            throw;
+        }
+    }
+    protected void CalculateEstimate()
+    {
+        Estimate = 0;
+        foreach (var item in NewBill.BillingItems)
+        {
+            Estimate += item.BillingSubCost;
+        }
+    }
+
+}

@@ -1,0 +1,167 @@
+﻿@page "/StoreManager/{StoreId}"
+<h3>StoreManager</h3>
+<NavBar StoreId="@StoreId"></NavBar>
+<hr />
+@if(MyStore == null)
+{
+    <h3>Loading...</h3>
+}
+else
+{
+<div class="card bg-dark text-white">
+    <div class="card-header">
+        <h4>
+            @MyStore.Name
+        </h4> 
+        <p class="text-muted">
+            @MyStore._id
+        </p>
+    </div>
+    <div class="card-body">
+        <div class="card bg-dark text-white" id="ÏnventoryItems">
+                <div class="card-header">
+                    Inventory Items
+                </div>
+                <div class="row overflow-auto" style="height:500px">
+                    @if (MyStore.InventoryItems == null)
+                    {
+                        <div class="col-12">
+                            <p class="text-muted">
+                                No Items found...
+                            </p>
+                        </div>
+                    }
+                    else
+                    {
+                        foreach (var item in MyStore.InventoryItems.OrderBy(el=>el.CreatedAt).ToList())
+                        {
+                            <div class="card col-sm-3 text-white bg-dark">
+                                <div class="card-header">
+                                    <div class="row  card-title">
+                                        <div class="col-12">
+                                            <h5>
+                                                @item.DisplayName
+                                                <span class="badge bg-light text-dark">@(item.Make == null ? "":item.Make)</span>
+                                            </h5>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body"  >
+                                    <div class="row ">
+                                        <div class="col-6">
+                                            <p class="">
+                                                Price <br /> @item.Cost
+                                            </p>
+                                        </div>
+                                        <div class="col-6">
+                                            <p class="">
+                                                Quantity<br /> @item.Quantity
+                                            </p>
+                                        </div>
+                                        <div class="col-sm-12">
+                                            <p class="text-muted">
+                                                Created At: @item.CreatedAt
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-footer justify-content-center">
+                                    <button class="btn btn-primary">
+                                        Manage
+                                        <span class="bi bi-gear"></span>
+                                    </button>
+                                    <button class="btn btn-danger" @onclick="@(e=>RemoveInventoryItem(item._id))">
+                                        Delete
+                                        <span class="bi bi-trash3-fill"></span>
+                                    </button>
+                                </div>
+
+                            </div>
+                            
+                        }
+                    }
+                </div>
+            <div class="card-footer">
+                <div class="row justify-content-md-center">
+                    <div class="col-sm-3">
+                        <label for="InvName" class="form-label">Name</label>
+                        <input id="InvName" class="form-control" type="text" placeholder="Item Name" @bind="@InvName" />
+                    </div>
+                    <div class="col-sm-3">
+                        <label for="InvMake" class="form-label">Make</label>
+                        <input id="InvMake" class="form-control" type="text" placeholder="Item Make" @bind="@InvMake" />
+                    </div>
+                    <div class="col-sm-2">
+                        <label for="InvCost" class="form-label">Cost</label>
+                        <input id="InvCost" class="form-control" type="number" placeholder="Cost" @bind="@InvCost" />
+                    </div>
+                    <div class="col-sm-2">
+                        <label for="InvQuan" class="form-label">Quantity</label>
+                        <input id="InvQuan" class="form-control" type="number" placeholder="Qty" @bind="@InvQuantity" />
+                    </div>
+                    <div class="col-sm-2">
+                        <label for="InvCat" class="form-label">Category</label>
+                        <input id="InvCat" class="form-control" type="text" placeholder="Category" @bind="@InvCategory" />
+                    </div>
+                </div>
+                <hr />
+                <div class="row justify-content-center">
+                    <div class="col-2 justify-content-center">
+                        <button class="btn btn-primary btn-block" @onclick="AddInventoryItem">
+                            Add
+                        </button>
+                    </div>
+                    <div class="col-2 justify-content-center">
+                        <button class="btn btn-secondary btn-block" @onclick="AddInventoryItem">
+                            Manage Inventory
+                        </button>
+                    </div>
+                </div>
+                </div>
+            </div>
+    </div>
+</div>
+}
+@code {
+    [Parameter]
+    public String StoreId { get; set; }
+
+    String InvName, InvMake, InvCategory;
+    double InvCost;
+    int InvQuantity;
+    Store MyStore;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GetStore();
+    }
+    protected async Task GetStore()
+    {
+        MyStore = await StoreHandler.GetStoreById(StoreId);
+    }
+    protected async Task AddInventoryItem()
+    {
+        InventoryItem NewItem = new InventoryItem();
+        NewItem.DisplayName = InvName;
+        NewItem.Cost = InvCost;
+        NewItem.Quantity = InvQuantity;
+        NewItem.Make = InvMake;
+        if(InvCategory != "")
+            NewItem.Category = InvCategory;
+        await StoreHandler.AddNewInventoryItem(NewItem, MyStore._id);
+        await GetStore();
+    }
+    protected async Task RemoveInventoryItem(String InventoryItemId)
+    {
+        await StoreHandler.DeleteInventoryItem(StoreId, InventoryItemId);
+        await GetStore();
+    }
+    public void NavigateToBilling()
+    {
+        UriHelper.NavigateTo($"bill/{StoreId}");
+    }
+    public void NavigateToBillList()
+    {
+        UriHelper.NavigateTo($"billlist/{StoreId}");
+    }
+}

@@ -1,0 +1,61 @@
+﻿@page "/"
+@using StorePOS.Data
+@using StorePOS.Models
+<h3>StoreView</h3>
+<input class="form-text" id="StoreName" type="text" @bind="@Name" />
+<input class="btn btn-primary" id="AddStore" type="button" value="Add Store" @onclick="AddStore" />
+<div class="card-body row container">
+    @if (List == null)
+    {
+        <h3 class="text-xl-center text-black-50">
+            No stores found...
+        </h3>
+    }
+    else
+    {
+        foreach (var item in List)
+        {
+            <div class="col-sm-6 bg-dark text-light card">
+                <div class="card-body">
+                    <h2 class="card-title text-xl-left">
+                        @item.Name
+                    </h2>
+                    <h6 class="text-muted">
+                        Created on: @(item.CreatedAt.ToLocalTime())
+                    </h6>
+                    <a href="#" class="btn btn-primary" @onclick="@(e=>ManageStore(item._id))">Manage</a>
+                    <a href="#" class="btn btn-danger" @onclick="@(e=>Delete(item._id))">Delete</a>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    List<Store> List = new List<Store>();
+    String Name;
+    protected override async Task OnInitializedAsync()
+    {
+        await GetAllStore();
+    }
+    protected async Task AddStore()
+    {
+        Store store = new Store();
+        store.Name = Name;
+        var result = await StoreHandler.AddNewStore(store);
+        await GetAllStore();
+    }
+    protected async Task GetAllStore()
+    {
+        List = await StoreHandler.GetAllStores();
+    }
+    protected async Task Delete(String Id)
+    {
+        await StoreHandler.DeleteStore(Id);
+        await GetAllStore();
+    }
+    public void ManageStore(String StoreId)
+    {
+        UriHelper.NavigateTo($"StoreManager/{StoreId}");
+    }
+}

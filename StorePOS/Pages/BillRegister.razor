@@ -1,0 +1,292 @@
+﻿@page "/bill/{StoreId}"
+@if (StoreName == null)
+{
+    <h6>Loading Store...</h6>
+}
+else
+{
+    //<h3 @onclick="@(e=>UriHelper.NavigateTo($"/StoreManager/{StoreId}"))">@StoreName</h3>
+    <h3>Bill Register</h3>
+
+    <NavBar StoreId="@StoreId"></NavBar>
+
+}
+<hr />
+<h3>
+    Billing Desk
+</h3>
+<hr />
+
+<div class="row">
+    <div class="col">
+        @if (Categories != null)
+        {
+
+            <ul class="list-group list-group-horizontal-md">
+                <li class="list-group-item list-group-item-dark" @onclick="@(e=>FilterByCategory(""))">
+                    All <span class="badge bg-light rounded-pill">@(Inventory.Count)</span>
+                </li>
+                @foreach (String item in Categories)
+                {
+                    <li class="list-group-item list-group-item-dark" @onclick="@(e=>FilterByCategory(item))">
+                        @item <span class="badge bg-light rounded-pill">@(Inventory.Where(el=>el.Category == item).ToList().Count)</span>
+                    </li>
+                }
+            </ul>
+        }
+        else
+        {
+            <p class="text-muted">No Categories...</p>
+        }
+    </div>
+
+</div>
+<hr />
+
+<div class="row">
+    <div class="col-sm-4" id="Bill">
+        <div class="col-sm-12">
+            <h4 class="text-center">
+                Cart
+            </h4>
+            <hr />
+            <h3>
+                @StoreName
+            </h3>
+            <hr />
+
+
+        </div>
+        @if (ListBillingItems == null)
+        {
+            <h4 class="text-danger">No items in cart...</h4>
+        }
+        else
+        {
+            int cnt = 1;
+            foreach (var item in ListBillingItems)
+            {
+                <div class="row m-1">
+                    <div class="col-sm-4">
+                        @cnt @item.DisplayName
+                    </div>
+                    <div class="col-2">
+                        @item.Cost
+                    </div>
+                    <div class="col-1">
+                        @item.BillingQuantity
+                    </div>
+                    <div class="col-2 text-success">
+                        @item.BillingSubCost
+                    </div>
+                    <div class="col-1" @onclick="@(e=>RemoveItemFromBill(item._id))">
+                        <a class="btn text-danger px-3 btn-block"><i class="fa fa-minus-square"></i></a>
+                    </div>
+                    <div class="col-1" @onclick="@(e=>AddItemToBill(item._id))">
+                        <a class="btn text-success px-3 btn-block"><i class="fa fa-plus-square"></i></a>
+                    </div>
+                </div>
+                cnt++;
+            }
+        }
+        <hr />
+        <div class="row">
+            <div class="col-7 text-right">
+                Sub Total
+            </div>
+            <div class="col-5">
+                @Estimate
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-7 text-right">
+                Total
+            </div>
+            <div class="col-5">
+                @(Estimate * Discount/100 + Estimate)
+            </div>
+        </div>
+        <hr />
+        <div class="row align-content-center">
+            <div class="col align-content-center">
+                <a class="btn btn-success btn-block text-white" @onclick="AddNewBill">
+                    Print
+                </a>
+            </div>
+            <div class="col align-content-center">
+                <a class="btn btn-danger btn-block text-white" @onclick="ClearBill">
+                    Clear
+                </a>
+            </div>
+        </div>
+    </div>
+    <hr />
+    <div class="col-sm-8">
+        <div class="row">
+            <h6>Displaying <mark>@SelectedCategory</mark> Items... </h6>
+        </div>
+        <hr />
+        <div style="height:500px; width:auto; overflow-x:hidden; overflow-y:auto">
+            <div class="row overflow-auto">
+                @if (Inventory == null)
+                {
+                    <p> No items in inventory...</p>
+                }
+                else
+                {
+                    foreach (var item in InventoryDisplay)
+                    {
+                        <div class="card text-white bg-dark col-sm-3 m-1 pb-1 mb-3">
+                            <h5 class="card-title">
+                                @item.DisplayName <span class="badge badge-secondary">@item.Category</span>
+                            </h5>
+                            <p class="card-body">
+                                Cost: @item.Cost <br />
+                                Qty: @item.Quantity
+                            </p>
+                            @if (item.Quantity > 0)
+                            {
+                                <a class="btn btn-outline-success m-1" @onclick="@(e => AddItemToBill(item._id))">
+                                    Add
+                                </a>
+                            }
+                            else
+                            {
+                                <a class="btn btn-outline-danger  disabled m-1" @onclick="@(e=>AddItemToBill(item._id))">
+                                    Out of Stock!
+                                </a>
+                            }
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+      
+    </div>
+
+
+
+</div>
+
+
+@code {
+    [Parameter]
+    public String StoreId { get; set; }
+
+    String SelectedCategory = "All";
+    List<String> Categories = new List<String>();
+    List<BillItem> ListBillingItems = new List<BillItem>();
+    List<InventoryItem> Inventory = new List<InventoryItem>();
+    List<InventoryItem> InventoryDisplay = new List<InventoryItem>();
+    String StoreName;
+    double Estimate = 0, Discount = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GetStore();
+    }
+    protected async Task GetStore()
+    {
+        var result = await StoreHandler.GetStoreById(StoreId);
+        StoreName = result.Name;
+        Inventory = result.InventoryItems.OrderBy(el => el.DisplayName).ToList();
+        InventoryDisplay = Inventory;
+        Categories = await StoreHandler.GetCategories(StoreId);
+    }
+    protected async Task AddNewBill()
+    {
+        try
+        {
+            Bill NewBill = new Bill();
+            NewBill.BillingItems = ListBillingItems;
+            NewBill.Estimate = Estimate;
+            await StoreHandler.AddNewBill(NewBill, StoreId);
+            await ClearBill();
+            await iJSRuntime.InvokeAsync<object>("open", new object[] { $"/BillPrintPreview/{StoreId}/{NewBill._id}", "_blank" });
+        }
+        catch (Exception)
+        {
+
+            throw;
+        }
+    }
+    protected void AddItemToBill(String itemId)
+    {
+
+        var existingItem = ListBillingItems.Find(e => e._id == itemId);
+        if (existingItem != null)
+        {
+            existingItem.BillingQuantity++;
+            existingItem.BillingSubCost = existingItem.Cost * existingItem.BillingQuantity;
+        }
+        else
+        {
+            BillItem TempBillingItem = new BillItem();
+            var result = Inventory.Find(e => e._id == itemId);
+            TempBillingItem.DisplayName = result.DisplayName;
+            TempBillingItem.Cost = result.Cost;
+            TempBillingItem._id = result._id;
+            TempBillingItem.BillingSubCost = TempBillingItem.Cost * TempBillingItem.BillingQuantity;
+            ListBillingItems.Add(TempBillingItem);
+        }
+        Inventory.Find(e => e._id == itemId).Quantity --;
+        CalculateEstimate();
+    }
+    protected void RemoveItemFromBill(String itemId)
+    {
+        var existingItem = ListBillingItems.Find(e => e._id == itemId);
+        if (existingItem != null)
+        {
+            if (existingItem.BillingQuantity > 1)
+            {
+                existingItem.BillingQuantity--;
+                existingItem.BillingSubCost = existingItem.Cost * existingItem.BillingQuantity;
+            }
+            else
+            {
+                ListBillingItems.Remove(existingItem);
+            }
+        }
+        else
+        {
+            return;
+        }
+        Inventory.Find(e => e._id == itemId).Quantity++;
+        CalculateEstimate();
+    }
+    protected void CalculateEstimate()
+    {
+        Estimate = 0;
+        foreach (var item in ListBillingItems)
+        {
+            Estimate += item.BillingSubCost;
+        }
+    }
+    protected async Task ClearBill()
+    {
+        Estimate = 0;
+        ListBillingItems.Clear();
+        if (ListBillingItems != null)
+        {
+            foreach (var item in ListBillingItems)
+            {
+                ListBillingItems.Remove(item);
+            }
+        }
+        await GetStore();
+
+    }
+    protected void FilterByCategory(String Category)
+    {
+        var TempInventory = Inventory.Where(it => it.Category != null?it.Category.Contains(Category):false).ToList();
+        if (TempInventory == null)
+            return;
+
+        InventoryDisplay = TempInventory;
+        if (Category == "")
+            SelectedCategory = "All";
+        else
+            SelectedCategory = Category;
+
+    }
+}
